@@ -1,0 +1,12 @@
+<div>
+    <div v-if="admin">
+        <button class="btn btn-primary" value="start game" onclick="startGame()"></button>
+    </div>
+    <div>
+        <strong>Waiting for the admin to start!</strong>
+        <ul id="players">
+            <p>Players:</p>
+            <li v-for="player in players">{{player}}</li>
+        </ul>
+    </div>
+</div>

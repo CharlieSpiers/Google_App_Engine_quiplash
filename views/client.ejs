@@ -6,12 +6,36 @@
     <h2 class="title">ECS Example Game</h2>
 
     <div id="game">
-        <div v-if="connected">
+
+        
+        <!-- Connecting -->
+        <div v-if="!connected">
+            <p>Connecting</p>
+        </div>
+
+        <!-- Not logged in -->
+        <div v-else-if="!logged_in">
+            <%- include('login'); -%>
+        </div>
+        
+        <!-- Logged in -->
+        <div v-else>
+
+            <!-- If the game is in the joining phase -->
+            <div v-if="joining">
+                <%- include('joining'); -%>
+            </div>
+
+            <!-- Playing the game -->
+            <div v-else>
+                <%- include('game'); -%>
+            </div>
+            
+            <!-- Chat -->
             <%- include('chat'); -%>
         </div>
-        <div v-else>
-            <p>Connecting...</p>
-        </div>
+
+                
     </div>
 
     <%- include('footer'); -%>
