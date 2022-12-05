@@ -60,8 +60,6 @@ var app = new Vue({
         submit_vote(number) { socket.emit('vote', number); },
 
         next_page() { socket.emit('next'); },
-
-        startGame() { socket.emit('start_game'); },
     }
 });
 

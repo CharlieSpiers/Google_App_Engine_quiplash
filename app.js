@@ -19,15 +19,16 @@ axios.defaults.headers.common['x-functions-key'] = process.env.AZURE_FUNCTION_KE
 
 //Game state variables
 const round_states = {
-  0: 'Prompts',
-  1: 'Answers',
-  2: 'Voting',
-  3: 'Results',  
-  4: 'Scores'
+  PROMPTS: 'Prompts',
+  ANSWERS: 'Answers',
+  VOTING: 'Voting',
+  RESULTS: 'Results',  
+  SCORES: 'Scores'
 }
-let players = new Map(); // socket : player_state 
-let gamestate = {joining: true, ended: false, round: 0, round_state: round_states[0], }
-
+let players = new Map(); // socket : {spectator, admin, name, score}
+let game_state = {joining: true, ended: false, round: 0, round_state: round_states.PROMPTS, }
+let game_prompts = {} // user : prompt
+let game_answers = {} // prompt : {user1: ans, user2: ans}
 
 //Handle client interface on /
 app.get('/', (req, res) => {
@@ -40,38 +41,81 @@ app.get('/display', (req, res) => {
 
 
 //Start the server
-function startServer() {
+function start_server() {
     const PORT = process.env.PORT || 8080;
     server.listen(PORT, () => {
         console.log(`Server listening on port ${PORT}`);
     });
 }
 
+
 //Start the game
-function startGame(socket) {
-  console.log("Starting game");
-  //start the game
-  //Update all
+function progress_game() {
+  console.log("Progressing game");
+  
+  if (game_state.joining) {
+    game_state.joining = false;
+  } else {
+    switch (game_state.round_state) {
+      case round_states.PROMPTS:
+        // Collect user's prompts from this round into game_prompts (user : prompt)
+        // Decide which users to give which prompts
+        // Change game state to ANSWERS
+        // Update state for all players
+        // Send out prompts for answering (may send 2 each if odd players)
+        break;
+      
+      case round_states.ANSWERS:
+        // Collect answers from this round into user_answers (prompt : {user: answer, user2: answer2})
+        // May the voting begin
+        break;
+        
+      case round_states.VOTING:
+        // Select random prompt from unvoted prompts:
+        // If the user was not an answerer give them a vote else tell em to sit their bitch ass down
+        // Collect votes in a map (prompt : (user: vote_num, user2: votenum))
+        break;
+          
+      case round_states.RESULTS:
+        // Show the result for this round of voting
+        // If there are still prompts left to be voted on, go back to voting
+        // Else go to scores (for the round)
+        break;
+
+      case round_states.SCORES:
+        if (game_state.round == 3) {
+          game_state.ended = true;
+        } else {
+          game_state.round += 1;
+          game_state.round_state = round_states.PROMPTS;
+        }
+        break;
+    }
+  }
+  //Update all client states
 }
 
+
 //Chat message
-function handleChat(message) {
+function handle_chat(message) {
     console.log('Handling chat: ' + message); 
     for(const socket of players) {
       socket.emit('chat', message)
     }
 }
 
+
 function update_state(socket) {
   let scores = {}
   players.forEach(x => scores[x.name] = x.score);
   
   socket.emit('state', {
-    game_state: gamestate,
+    game_state: game_state,
     player_state: players.get(socket),
     other_player_state: scores
   });
 }
+
 
 function add_player(socket, name) {
   players.set(socket, {
@@ -87,14 +131,13 @@ function add_player(socket, name) {
   update_state(socket);
 }
 
-function handle_request(socket, url, data, event_name, on_success, on_fail) {
+
+function handle_request(socket, url, data, event_name, on_success) {
   axios.post(url, data)
   .then(response => {
     let resp_data = response.response.data;
     if (resp_data.result) {
       on_success(socket, resp_data);
-    } else {
-      on_fail(socket, resp_data);
     }
     socket.emit(event_name, resp_data.result, resp_data.msg)
   })
@@ -116,36 +159,36 @@ io.on('connection', socket => {
   //Handle on chat message received
   socket.on('chat', message => {
     const name = players.get(socket).get(name)
-    handleChat(name + ": " + message);
+    handle_chat(name + ": " + message);
   });
 
   //Handle register
   socket.on('register', ({username, password}) => {
     console.log('register: username=${username}, password=${password}')
     let data = {username: username, password: password}
-    handle_request(socket, '/player/register', data, 'result', (soc, res) => {}, (soc, res) => {})
+    handle_request(socket, '/player/register', data, 'result', (_, _) => {})
   });
 
   //Handle login
   socket.on('login', ({username, password}) => {
     console.log('login: username=${username}, password=${password}')
     let data = {username: username, password: password}
-    handle_request(socket, '/player/login', data, 'login', (soc, res) => add_player(soc, res), (soc, res) => {})
+    handle_request(socket, '/player/login', data, 'login', (soc, res) => add_player(soc, res))
   });
 
   //Handle submit prompt
-  socket.on('submit_prompt', prompt_text => {
-    // console.log('submit_prompt: username=${username}, password=${password}')
-    // let data = {username: username, password: password}
-    // handle_request(socket, '/player/login', data, 'login', res => add_player(res), () => {})
+  socket.on('submit_prompt', ({username, password, prompt_text}) => {
+    console.log('submit_prompt: username=${username}, text=${prompt_text}')
+    let data = {username: username, password: password, text: prompt_text}
+    handle_request(socket, '/prompt/create', data, 'submit_prompt', (soc, res) => add_prompt(soc, res))
   });
 
-  //Handle starting game
-  socket.on('start_game', () => {
+  //Handle progressing the game
+  socket.on('next', () => {
     if (players.get(socket).get(admin)) {
-      startGame(socket);
+      progress_game(socket);
     } else {
-      socket.emit('error', 'You are not the admin!')
+      socket.emit('next', false, 'You are not the admin!')
     }
   });
 
@@ -153,7 +196,7 @@ io.on('connection', socket => {
 
 //Start server
 if (module === require.main) {
-  startServer();
+  start_server();
 }
 
 module.exports = server;
