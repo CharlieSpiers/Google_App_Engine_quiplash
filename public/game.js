@@ -17,11 +17,15 @@ var app = new Vue({
             joining: true,
             ended: false,
             round: 0,
-            round_state: ''
+            round_state: '',
+            voting: {}
         },
         player_state: {
-            
-
+            name: name,
+            score: 0,
+            admin: (players.size == 1),
+            prompts_to_make: 0,
+            prompts_to_answer: []
         },
         other_player_state: {
 
@@ -58,7 +62,7 @@ var app = new Vue({
 
         submit_answer() { socket.emit('submit_answer', {username: this.username, answer_text: this.answer_text}); },
 
-        submit_vote(number) { socket.emit('vote', number); },
+        submit_vote(name) { socket.emit('vote', name); },
 
         next_page() { socket.emit('next'); },
     }
@@ -106,6 +110,6 @@ function connect() {
 
     socket.on('submit_prompt', ({result, message}) => {
         if (!result) alert(message);
-        else app.logged_in = true;
+        app.player_state.prompts_to_make -= 1;
     });
 }
