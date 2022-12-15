@@ -22,7 +22,7 @@
         <div v-else>
 
             <!-- If the game is in the joining phase -->
-            <div v-if="joining">
+            <div v-if="game_state.joining">
                 <%- include('joining'); -%>
             </div>
 

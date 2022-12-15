@@ -32,6 +32,7 @@ var app = new Vue({
     },
     methods: {
         handleChat(message) {
+            alert(message);
             if(this.messages.length + 1 > 10) {
                 this.messages.pop();
             }
@@ -53,9 +54,9 @@ var app = new Vue({
 
         login() { socket.emit('login', {username: this.username, password: this.password}); },
 
-        submit_prompt() { socket.emit('submit_prompt', this.prompt_text); },
+        submit_prompt() { socket.emit('submit_prompt', {username: this.username, password: this.password, prompt_text: this.prompt_text}); },
 
-        submit_answer() { socket.emit('submit_answer', this.answer_text); },
+        submit_answer() { socket.emit('submit_answer', {username: this.username, answer_text: this.answer_text}); },
 
         submit_vote(number) { socket.emit('vote', number); },
 
@@ -77,13 +78,14 @@ function connect() {
     socket.on('disconnect', function() {
         alert('Disconnected');
         app.connected = false;
+        app.logged_in = false;
     });
 
     //Handle when set to admin
     socket.on('setAdmin', bool => app.admin = bool);
 
     //Handle incoming chat message
-    socket.on('chat', msg => app.handleChat(message));
+    socket.on('chat', msg => app.handleChat(msg));
 
     //Handle getting an error message
     socket.on('error', msg => alert(msg));
@@ -91,4 +93,19 @@ function connect() {
     //Handle state updates
     socket.on('state', state_dict => app.update_state(state_dict))
 
+    //Handle responses from the servers
+    socket.on('login', ({result, message}) => {
+        if (!result) alert(message);
+        else app.logged_in = true;
+    });
+
+    socket.on('register', ({result, message}) => {
+        if (!result) alert(message);
+        else app.logged_in = true;
+    });
+
+    socket.on('submit_prompt', ({result, message}) => {
+        if (!result) alert(message);
+        else app.logged_in = true;
+    });
 }

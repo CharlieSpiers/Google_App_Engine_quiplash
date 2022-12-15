@@ -1,3 +1,27 @@
-<div>
-    <p>Game</p>
+ <div v-if="player_state.admin">
+    <button class="btn btn-primary" onclick="next_page()">Next</button>
+</div>
+
+<div v-if="game_state.ended">
+
+</div>
+
+<div v-else-if="game_state.round_state == 'Prompts'">
+
+</div>
+
+<div v-else-if="game_state.round_state == 'Answers'">
+
+</div>
+
+<div v-else-if="game_state.round_state == 'Voting'">
+
+</div>
+
+<div v-else-if="game_state.round_state == 'Results'">
+
+</div>
+
+<div v-else-if="game_state.round_state == 'Scores'">
+
 </div>
