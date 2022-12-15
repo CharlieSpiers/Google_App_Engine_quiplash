@@ -1,5 +1,5 @@
 <div v-if="player_state.admin">
-    <button class="btn btn-primary" onclick="next_page()">Start game</button>
+    <button class="btn btn-primary" @click="next_page()">Start game</button>
 </div>
 <div v-if="player_state.spactator">
     <p>You are a spectator!</p>

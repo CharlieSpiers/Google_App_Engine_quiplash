@@ -1,27 +1,34 @@
  <div v-if="player_state.admin">
-    <button class="btn btn-primary" onclick="next_page()">Next</button>
+    <button class="btn btn-primary" @click="next_page()">Next</button>
+</div>
+<div v-if="player_state.spactator">
+    <p>You are a spectator!</p>
 </div>
 
 <div v-if="game_state.ended">
-
+    <p>The game has ended!</p>
+    <ul id="Final scores:">
+        <p>Players:</p>
+        <li v-for="(item, key) in other_player_state">{{key + ": " + item}}</li>
+    </ul>
 </div>
 
 <div v-else-if="game_state.round_state == 'Prompts'">
-
+    Prompts
 </div>
 
 <div v-else-if="game_state.round_state == 'Answers'">
-
+    Anaswers
 </div>
 
 <div v-else-if="game_state.round_state == 'Voting'">
-
+    Voting
 </div>
 
 <div v-else-if="game_state.round_state == 'Results'">
-
+    Results
 </div>
 
 <div v-else-if="game_state.round_state == 'Scores'">
-
+    Scores
 </div>

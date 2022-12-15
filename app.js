@@ -63,40 +63,40 @@ function progress_game() {
     game_state.joining = false;
     players.forEach(p => {
       submitted_prompts[p.name] = ["", ""]
-      if (players.size()%2 == 0) p.prompts_to_make = 1;
+      if (players.size%2 == 0) p.prompts_to_make = 1;
       else  p.prompts_to_make = 2; 
     })
   } else {
     switch (game_state.round_state) {
       case round_states.PROMPTS:
-        prompts_needed = players.size();
-        player_prompt_num = 1;
+        let prompts_needed = players.size;
+        let player_prompt_num = 1;
         if (prompts_needed % 2 == 0) {
           prompts_needed = prompts_needed/2;
           player_prompt_num = 2;
         }
-        prompts_to_give = {}
+        let prompts_to_give = {}
         players.forEach(value => prompts_to_give[value.name] = player_prompt_num)
 
-        submitted_prompts.sort((_, __) => 0.5 - Math.random())
-        round_prompts = Object.values(submitted_prompts).slice(0, (prompts_needed/2 | 0)+1);
+        let round_prompts = Object.values(submitted_prompts).sort((_, __) => 0.5 - Math.random()).slice(0, (prompts_needed/2 | 0)+1);
         axios.post("/prompts/get", {"prompts" : (prompts_needed/2 | 0)}) //floor of prompts/2
         .then(response => response.data.forEach(x => round_prompts.push(x.text)))
         .catch(error => console.log(error))
 
-        names = Array.from(players.keys());
+        let names = Array.from(players.keys());
         names.sort((_, __) => 0.5 - Math.random());
         names = [...names, ...names];
 
         round_prompts.forEach((prompt, index) => {
-          name1 = names[2*index]
-          name2 = names[(2*index)+1]
+          let name1 = names[2*index];
+          let name2 = names[(2*index)+1];
+        
 
           while (prompt in player_prompts) {
             prompt += " "; //Avoid repeated prompts messing stuff up
           }
 
-          player_prompts[prompt] = {'vtd': false};
+          player_prompts[prompt] = {vtd: false};
           player_prompts[prompt][name1] = {answer: "", votes: 0};
           player_prompts[prompt][name2] = {answer: "", votes: 0};
 
@@ -112,7 +112,6 @@ function progress_game() {
       
       case round_states.ANSWERS:
         // Collect answers from this round into user_answers (prompt : {user: {answer, votes}, user2: {answer2, votes}})
-        player_prompts.sort((_, __) => 0.5 - Math.random());
         set_voting_state();
         game_state.round_state = round_states.VOTING;
         break;
@@ -146,9 +145,9 @@ function progress_game() {
 function set_voting_state() {
   let skip = false;
   Object.keys(player_prompts).forEach(prompt => {
-    if (!player_prompts[prompt][vtd] || skip) return;
+    if (!player_prompts[prompt].vtd || skip) return;
     skip = true;
-    player_prompts[prompt][vtd] = true;
+    player_prompts[prompt].vtd = true;
 
     game_state[voting] = {
       prompt: prompt,
@@ -178,7 +177,7 @@ function update_state() {
       other_player_state: scores
     });
   }
-  spectators.forEach(socket => {
+  Object.keys(spectators).forEach(socket => {
     socket.emit('state', {
       game_state: game_state,
       other_player_state: scores
@@ -194,7 +193,7 @@ function add_player(socket, name) {
     players.set(socket, {
       name: name,
       score: 0,
-      admin: (players.size == 1),
+      admin: (players.size == 0),
       prompts_to_make: 0,
       prompts_to_answer: []
     });
@@ -289,8 +288,9 @@ io.on('connection', socket => {
 
   //Handle progressing the game
   socket.on('next', () => {
+    console.log('next pressed');
     if (!players.has(socket)) socket.emit('error', "not logged in");
-    else if (players.get(socket).get(admin)) progress_game(socket);
+    else if (players.get(socket).admin) progress_game(socket);
     else socket.emit('next', false, 'You are not the admin!');
   });
 
