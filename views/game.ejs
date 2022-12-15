@@ -4,25 +4,53 @@
 <div v-if="player_state.spactator">
     <p>You are a spectator!</p>
 </div>
+<strong>Round: </strong>{{game_state.round}}
 
 <div v-if="game_state.ended">
     <p>The game has ended!</p>
     <ul id="Final scores:">
-        <p>Players:</p>
+        <p>Final scores:</p>
         <li v-for="(item, key) in other_player_state">{{key + ": " + item}}</li>
     </ul>
 </div>
 
 <div v-else-if="game_state.round_state == 'Prompts'">
-    Prompts
+    <div v-if="player_state.prompts_to_make > 0">
+        Please submit a prompt! Prompts left to submit this round: {{player_state.prompts_to_make}}
+        <input type="text" @keyup.enter="submit_prompt()" v-model="prompt_text" class="form-control" placeholder="Your prompt here!">
+        <button class="btn btn-primary" @click="submit_prompt()">Submit prompt</button>
+    </div>
+    <div v-else>
+        You have submitted all of your prompts for this round, please wait for the admin to progress the game!
+    </div>    
 </div>
 
 <div v-else-if="game_state.round_state == 'Answers'">
-    Anaswers
+    <div v-if="prompts_answered == player_state.prompts_to_answer">
+        You have submitted all of your answers for this round, please wait for the admin to progress the game!
+    </div>
+    <div v-else>
+        <div v-if="prompts_answered == 0">
+            <p>Please submit an answer to this prompt1: </p>{{player_state.prompt_to_answer_0}}
+            <input type="text" @keyup.enter="submit_answer(0)" v-model="answer_text" class="form-control" placeholder="Your answer here!">
+            <button class="btn btn-primary" @click="submit_answer(0)">Submit answer</button>
+        </div>
+        <div v-else>
+            Please submit an answer to this prompt: {{player_state.prompt_to_answer_1}}
+            <input type="text" @keyup.enter="submit_answer(1)" v-model="answer_text" class="form-control" placeholder="Your answer here!">
+            <button class="btn btn-primary" @click="submit_answer(1)">Submit answer</button>
+        </div>
+    </div>
+
 </div>
 
 <div v-else-if="game_state.round_state == 'Voting'">
-    Voting
+    <div v-if="!voted">
+        This is where you vote dummy.
+    </div>
+    <div v-else>
+        You have voted! please wait for the admin to progress the game!
+    </div>
 </div>
 
 <div v-else-if="game_state.round_state == 'Results'">

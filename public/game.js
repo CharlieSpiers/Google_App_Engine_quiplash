@@ -12,6 +12,8 @@ var app = new Vue({
         answer_text: '',
         username: '',
         password: '',
+        voted: false,
+        prompts_answered: 0,
 
         game_state: {
             joining: true,
@@ -21,11 +23,12 @@ var app = new Vue({
             voting: {}
         },
         player_state: {
-            name: name,
+            name: "name",
             score: 0,
-            admin: (players.size == 1),
+            admin: false,
             prompts_to_make: 0,
-            prompts_to_answer: []
+            prompt_to_answer_0: "",
+            prompt_to_answer_1: "",
         },
         other_player_state: {
 
@@ -36,7 +39,6 @@ var app = new Vue({
     },
     methods: {
         handleChat(message) {
-            alert(message);
             if(this.messages.length + 1 > 10) {
                 this.messages.pop();
             }
@@ -49,6 +51,7 @@ var app = new Vue({
         },
 
         update_state({game_state, player_state, other_player_state}) {
+            if (this.game_state != game_state) this.voted = false;
             this.game_state = game_state;
             this.player_state = player_state;
             this.other_player_state = other_player_state;
@@ -58,11 +61,22 @@ var app = new Vue({
 
         login() { socket.emit('login', {username: this.username, password: this.password}); },
 
-        submit_prompt() { socket.emit('submit_prompt', {username: this.username, password: this.password, prompt_text: this.prompt_text}); },
+        submit_prompt() { 
+            socket.emit('submit_prompt', {username: this.username, password: this.password, prompt_text: this.prompt_text}); 
+            this.prompts_answered = 0;
+        },
 
-        submit_answer() { socket.emit('submit_answer', {username: this.username, answer_text: this.answer_text}); },
+        submit_answer(prompt_num) { 
+            let prompt = this.player_state.prompt_to_answer_1;
+            if (prompt_num == 0) prompt = this.player_state.prompt_to_answer_0;
+            alert(prompt);
+            socket.emit('submit_answer', {username: this.username, prompt: prompt, answer_text: this.answer_text}); 
+        },
 
-        submit_vote(name) { socket.emit('vote', name); },
+        submit_vote(name) { 
+            socket.emit('vote', name); 
+            this.voted = true;
+        },
 
         next_page() { socket.emit('next'); },
     }
@@ -110,6 +124,9 @@ function connect() {
 
     socket.on('submit_prompt', ({result, message}) => {
         if (!result) alert(message);
-        app.player_state.prompts_to_make -= 1;
+        else {
+            app.player_state.prompts_to_make -= 1;
+            app.prompt_text = "";
+        }
     });
 }

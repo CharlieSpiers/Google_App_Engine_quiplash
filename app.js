@@ -2,6 +2,7 @@
 
 //Set up express
 const express = require('express');
+const { json } = require('stream/consumers');
 const app = express();
 
 //Setup socket.io
@@ -26,7 +27,7 @@ const round_states = {
   SCORES: 'Scores'
 };
 let players = new Map(); // socket : {admin, name, score}
-let spectators = {}; // socket : name
+let spectators = new Map(); // socket : name
 let game_state = {joining: true, ended: false, round: 0, round_state: round_states.PROMPTS, voting: {}};
 let submitted_prompts = {}; // name : prompt
 let player_prompts = {}; // prompt : [{name, answer, votes}]
@@ -54,7 +55,6 @@ function start_server() {
 
 //Start the game
 function progress_game() {
-  console.log("Progressing game");
   if (game_state.ended) {
     game_state = {joining: true, ended: false, round: 0, round_state: round_states.PROMPTS, voting: {}};
     submitted_prompts = {};
@@ -78,20 +78,31 @@ function progress_game() {
         let prompts_to_give = {}
         players.forEach(value => prompts_to_give[value.name] = player_prompt_num)
 
-        let round_prompts = Object.values(submitted_prompts).sort((_, __) => 0.5 - Math.random()).slice(0, (prompts_needed/2 | 0)+1);
+        let sub_prom = []
+        Object.values(submitted_prompts).forEach(x => {
+          sub_prom.push(x[0]);
+          if (players.size%2 == 1) sub_prom.push(x[1]);
+        });
+        sub_prom.sort((_, __) => 0.5 - Math.random());
+        
+        let round_prompts = []
         axios.post("/prompts/get", {"prompts" : (prompts_needed/2 | 0)}) //floor of prompts/2
         .then(response => response.data.forEach(x => round_prompts.push(x.text)))
         .catch(error => console.log(error))
+        round_prompts.push(...sub_prom.slice(0, prompts_needed-round_prompts.length))
 
-        let names = Array.from(players.keys());
+        let names = [];
+        players.forEach(x => {
+          names.push(x.name);
+        });
+        
         names.sort((_, __) => 0.5 - Math.random());
         names = [...names, ...names];
 
         round_prompts.forEach((prompt, index) => {
-          let name1 = names[2*index];
+          let name1 = names[(2*index)];
           let name2 = names[(2*index)+1];
         
-
           while (prompt in player_prompts) {
             prompt += " "; //Avoid repeated prompts messing stuff up
           }
@@ -102,11 +113,16 @@ function progress_game() {
 
           players.forEach(p => {
             if (p.name == name1 || p.name == name2) {
-              p.prompts_to_answer.push(prompt);
+              if (p.prompt_to_answer_0 == "") {
+                p.prompt_to_answer_0 = prompt;
+                p.prompts_to_answer = 1;
+              } else {
+                p.prompt_to_answer_1 = prompt;
+                p.prompts_to_answer = 2;
+              }
             }
           })
         });
-
         game_state.round_state = round_states.ANSWERS;
         break;
       
@@ -143,23 +159,26 @@ function progress_game() {
 
 //Returns a bool (if true advance to scores)
 function set_voting_state() {
+  console.log("Setting voting state");
+  console.log(JSON.stringify(player_prompts));
   let skip = false;
   Object.keys(player_prompts).forEach(prompt => {
-    if (!player_prompts[prompt].vtd || skip) return;
-    skip = true;
-    player_prompts[prompt].vtd = true;
+    if (player_prompts[prompt].vtd || skip) return;
 
-    game_state[voting] = {
+    game_state['voting'] = {
       prompt: prompt,
       info: player_prompts[prompt]
     }
+    console.log("ASBSABD: " + game_state['voting'])
+
+    skip = true;
+    player_prompts[prompt].vtd = true;
   });
   return !skip;
 }
 
 //Chat message
 function handle_chat(message) {
-    console.log('Handling chat: ' + message); 
     for(const [socket, _] of players.entries()) {
       socket.emit('chat', message);
     }
@@ -169,33 +188,36 @@ function handle_chat(message) {
 function update_state() {
   let scores = {};
   players.forEach(x => scores[x.name] = x.score);
-  
   for(const [socket, _] of players.entries()) {
+    console.log("Playaa state: " + JSON.stringify(players.get(socket)))
     socket.emit('state', {
       game_state: game_state,
       player_state: players.get(socket),
       other_player_state: scores
     });
   }
-  Object.keys(spectators).forEach(socket => {
+  for(const [socket, _] of spectators.entries()) {
     socket.emit('state', {
       game_state: game_state,
       other_player_state: scores
     });
-  });
+  };
 }
 
 
 function add_player(socket, name) {
   if (!game_state.joining) {
-    spectators[socket] = name;
+    console.log("spectator")
+    spectators.set(socket, name);
   } else {
     players.set(socket, {
       name: name,
       score: 0,
       admin: (players.size == 0),
       prompts_to_make: 0,
-      prompts_to_answer: []
+      prompts_to_answer: 0,
+      prompt_to_answer_0: "",
+      prompt_to_answer_1: ""
     });
   }
   update_state();
@@ -205,7 +227,7 @@ function add_prompt(player_name, prompt_text) {
   if (submitted_prompts[player_name][0] == "") {
     submitted_prompts[player_name][0] = prompt_text;
   } else {
-    submitted_prompts[player_name][1] = [prompt_text];
+    submitted_prompts[player_name][1] = prompt_text;
   }
 }
 
@@ -216,7 +238,6 @@ function handle_request(socket, url, data, event_name, on_success) {
     if (result) {
       on_success(socket);
     }
-    console.log(msg);
     socket.emit(event_name, {result: result, message: msg});
   })
   .catch(error => {
@@ -246,7 +267,7 @@ io.on('connection', socket => {
 
   //Handle on chat message received
   socket.on('chat', message => {
-    if (! players.has(socket)) socket.emit('error', "not logged in");
+    if (!players.has(socket)) socket.emit('error', "not logged in");
     else {
       let {name, score, admin} = players.get(socket);
       handle_chat(name + ": " + message);
@@ -277,7 +298,8 @@ io.on('connection', socket => {
   //Handle submit answer
   socket.on('submit_answer', ({username, prompt, answer_text}) => {
     console.log('submit_answer: username=' + username);
-    player_prompts[prompt][player_name][answer] = answer_text;
+    prompt = player_prompts[prompt];
+    prompt[username].answer = answer_text;
   });
 
   //Handle submit vote

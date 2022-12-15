@@ -1,4 +1,4 @@
 <input type="text" v-model="username" class="form-control" placeholder="username">
-<input type="text" v-model="password" class="form-control" placeholder="password">
+<input type="text" v-model="password" @keyup.enter="login()" class="form-control" placeholder="password">
 <button class="btn-primary" @click="login()">Login</button>
 <button class="btn-primary" @click="register()">Register</button>
