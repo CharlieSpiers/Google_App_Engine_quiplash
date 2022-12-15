@@ -31,12 +31,12 @@
     </div>
     <div v-else>
         <div v-if="prompts_answered == 0">
-            <p>Please submit an answer to this prompt1: </p>{{player_state.prompt_to_answer_0}}
+            <p>Please submit an answer to this prompt: {{player_state.prompt_to_answer_0}}</p>
             <input type="text" @keyup.enter="submit_answer(0)" v-model="answer_text" class="form-control" placeholder="Your answer here!">
             <button class="btn btn-primary" @click="submit_answer(0)">Submit answer</button>
         </div>
         <div v-else>
-            Please submit an answer to this prompt: {{player_state.prompt_to_answer_1}}
+            <p>Please submit an answer to this prompt: {{player_state.prompt_to_answer_1}}</p>
             <input type="text" @keyup.enter="submit_answer(1)" v-model="answer_text" class="form-control" placeholder="Your answer here!">
             <button class="btn btn-primary" @click="submit_answer(1)">Submit answer</button>
         </div>
@@ -46,7 +46,18 @@
 
 <div v-else-if="game_state.round_state == 'Voting'">
     <div v-if="!voted">
-        This is where you vote dummy.
+        Who's answer is better?
+        <p>The prompt was: {{game_state.voting.prompt}}</p>
+        <div>
+            <strong>Player {{game_state.voting.info[0].name}} said:</strong>
+            <li>{{game_state.voting.info[0].answer}}</li>
+            <button class="btn btn-primary" @click="vote(0)">Vote for this player</button>
+        </div>
+        <div>
+            <strong>Player {{game_state.voting.info[1].name}} said:</strong>
+            <li>{{game_state.voting.info[1].answer}}</li>
+            <button class="btn btn-primary" @click="vote(1)">Vote for this player</button>
+        </div>     
     </div>
     <div v-else>
         You have voted! please wait for the admin to progress the game!
@@ -54,7 +65,18 @@
 </div>
 
 <div v-else-if="game_state.round_state == 'Results'">
-    Results
+    Results of the round:
+    <p>The prompt was: {{game_state.voting.prompt}}</p>
+    <div>
+        <strong>Player {{game_state.voting.info[0].name}} said:</strong>
+        <li>{{game_state.voting.info[0].answer}}</li>
+        <li>They got {{game_state.voting.info[0].votes}} votes for {{game_state.voting.scores[0]}} points</li>
+    </div>
+    <div>
+        <strong>Player {{game_state.voting.info[1].name}} said:</strong>
+        <li>{{game_state.voting.info[1].answer}}</li>
+        <li>They got {{game_state.voting.info[1].votes}} votes for {{game_state.voting.scores[1]}} points</li>
+    </div>  
 </div>
 
 <div v-else-if="game_state.round_state == 'Scores'">

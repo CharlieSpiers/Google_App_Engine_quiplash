@@ -1,5 +1,6 @@
 'use strict';
 
+const { info } = require('console');
 //Set up express
 const express = require('express');
 const { json } = require('stream/consumers');
@@ -28,7 +29,7 @@ const round_states = {
 };
 let players = new Map(); // socket : {admin, name, score}
 let spectators = new Map(); // socket : name
-let game_state = {joining: true, ended: false, round: 0, round_state: round_states.PROMPTS, voting: {}};
+let game_state = {joining: true, ended: false, round: 1, round_state: round_states.PROMPTS, voting: {}};
 let submitted_prompts = {}; // name : prompt
 let player_prompts = {}; // prompt : [{name, answer, votes}]
 let game_answers = {};
@@ -56,7 +57,7 @@ function start_server() {
 //Start the game
 function progress_game() {
   if (game_state.ended) {
-    game_state = {joining: true, ended: false, round: 0, round_state: round_states.PROMPTS, voting: {}};
+    game_state = {joining: true, ended: false, round: 1, round_state: round_states.PROMPTS, voting: {}};
     submitted_prompts = {};
     player_prompts = {};
   } else if (game_state.joining) {
@@ -108,8 +109,8 @@ function progress_game() {
           }
 
           player_prompts[prompt] = {vtd: false};
-          player_prompts[prompt][name1] = {answer: "", votes: 0};
-          player_prompts[prompt][name2] = {answer: "", votes: 0};
+          player_prompts[prompt]['0'] = {name: name1, answer: "", votes: 0};
+          player_prompts[prompt]['1'] = {name: name2, answer: "", votes: 0};
 
           players.forEach(p => {
             if (p.name == name1 || p.name == name2) {
@@ -134,6 +135,10 @@ function progress_game() {
         
       case round_states.VOTING:
         game_state.round_state = round_states.RESULTS;
+        game_state.voting['scores'] = {
+          '0': (game_state.voting.info[0].votes * 100 * game_state.round),
+          '1': (game_state.voting.info[1].votes * 100 * game_state.round)
+        }
         break;
           
       case round_states.RESULTS:
@@ -165,11 +170,17 @@ function set_voting_state() {
   Object.keys(player_prompts).forEach(prompt => {
     if (player_prompts[prompt].vtd || skip) return;
 
+    let info = {};
+    Object.keys(player_prompts[prompt]).forEach(x => {
+      if (x != "vtd") {
+        info[x] = player_prompts[prompt][x];
+      }
+    })
+
     game_state['voting'] = {
       prompt: prompt,
-      info: player_prompts[prompt]
+      info: info
     }
-    console.log("ASBSABD: " + game_state['voting'])
 
     skip = true;
     player_prompts[prompt].vtd = true;
@@ -299,13 +310,17 @@ io.on('connection', socket => {
   socket.on('submit_answer', ({username, prompt, answer_text}) => {
     console.log('submit_answer: username=' + username);
     prompt = player_prompts[prompt];
-    prompt[username].answer = answer_text;
+    if (prompt[0].name == username) {
+      prompt[0].answer = answer_text;
+    } else if (prompt[1].name == username) {
+      prompt[1].answer = answer_text;
+    }
   });
 
   //Handle submit vote
-  socket.on('vote', name => {
-    curr_prompt = game_state[voting];
-    player_prompts[curr_prompt][name][votes] += 1;
+  socket.on('vote', number => {
+    let curr_prompt = game_state['voting'].prompt;
+    player_prompts[curr_prompt][number].votes += 1;
   });
 
   //Handle progressing the game

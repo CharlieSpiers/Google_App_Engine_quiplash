@@ -20,7 +20,13 @@ var app = new Vue({
             ended: false,
             round: 0,
             round_state: '',
-            voting: {}
+            voting: {
+                info: {
+                    '0': {},
+                    '1': {}
+                },
+                prompt: ""
+            }
         },
         player_state: {
             name: "name",
@@ -73,8 +79,8 @@ var app = new Vue({
             socket.emit('submit_answer', {username: this.username, prompt: prompt, answer_text: this.answer_text}); 
         },
 
-        submit_vote(name) { 
-            socket.emit('vote', name); 
+        vote(number) { 
+            socket.emit('vote', number); 
             this.voted = true;
         },
 
