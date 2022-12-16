@@ -50,13 +50,12 @@
         <p>The prompt was: {{game_state.voting.prompt}}</p>
         <strong>Player {{game_state.voting.info[0].name}} said:</strong>
         <li>{{game_state.voting.info[0].answer}}</li>
-        <div v-if="spectator">
-            <button class="btn btn-primary" @click="vote(0)">Vote for this player</button>
-        </div>
-
         <strong>Player {{game_state.voting.info[1].name}} said:</strong>
         <li>{{game_state.voting.info[1].answer}}</li>
-        <button class="btn btn-primary" @click="vote(1)">Vote for this player</button>
+        <div v-if="!spectator">
+            <button class="btn btn-primary" @click="vote(0)">Vote for {{game_state.voting.info[0].name}}</button>
+            <button class="btn btn-primary" @click="vote(1)">Vote for {{game_state.voting.info[1].name}}</button>
+        </div>
     </div>
     <div v-else>
         You have voted! please wait for the admin to progress the game!
@@ -79,5 +78,7 @@
 </div>
 
 <div v-else-if="game_state.round_state == 'Scores'">
-    Scores
+    <div v-for="(item, key) in game_state.results">
+        <li>Player {{key}}: {{other_player_state[key]}} score + {{item}} this round.</li>
+    </div>
 </div>

@@ -27,7 +27,8 @@ var app = new Vue({
                     '1': {}
                 },
                 prompt: ""
-            }
+            }, 
+            results: {}
         },
         player_state: {
             name: "name",
@@ -76,7 +77,7 @@ var app = new Vue({
         submit_answer(prompt_num) { 
             let prompt = this.player_state.prompt_to_answer_1;
             if (prompt_num == 0) prompt = this.player_state.prompt_to_answer_0;
-            alert(prompt);
+            this.prompts_answered += 1;
             socket.emit('submit_answer', {username: this.username, prompt: prompt, answer_text: this.answer_text}); 
         },
 
