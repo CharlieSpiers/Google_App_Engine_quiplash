@@ -1,7 +1,7 @@
  <div v-if="player_state.admin">
     <button class="btn btn-primary" @click="next_page()">Next</button>
 </div>
-<div v-if="player_state.spactator">
+<div v-if="spectator">
     <p>You are a spectator!</p>
 </div>
 <strong>Round: </strong>{{game_state.round}}
@@ -48,16 +48,15 @@
     <div v-if="!voted">
         Who's answer is better?
         <p>The prompt was: {{game_state.voting.prompt}}</p>
-        <div>
-            <strong>Player {{game_state.voting.info[0].name}} said:</strong>
-            <li>{{game_state.voting.info[0].answer}}</li>
+        <strong>Player {{game_state.voting.info[0].name}} said:</strong>
+        <li>{{game_state.voting.info[0].answer}}</li>
+        <div v-if="spectator">
             <button class="btn btn-primary" @click="vote(0)">Vote for this player</button>
         </div>
-        <div>
-            <strong>Player {{game_state.voting.info[1].name}} said:</strong>
-            <li>{{game_state.voting.info[1].answer}}</li>
-            <button class="btn btn-primary" @click="vote(1)">Vote for this player</button>
-        </div>     
+
+        <strong>Player {{game_state.voting.info[1].name}} said:</strong>
+        <li>{{game_state.voting.info[1].answer}}</li>
+        <button class="btn btn-primary" @click="vote(1)">Vote for this player</button>
     </div>
     <div v-else>
         You have voted! please wait for the admin to progress the game!

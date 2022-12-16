@@ -6,6 +6,7 @@ var app = new Vue({
     data: {
         connected: false,
         logged_in: false,
+        spectator: false,
         messages: [],
         chatmessage: '',
         prompt_text: '',
@@ -122,6 +123,9 @@ function connect() {
         if (!result) alert(message);
         else app.logged_in = true;
     });
+
+    //Handle responses from the servers
+    socket.on('spectator', () => app.spectator = true);
 
     socket.on('register', ({result, message}) => {
         if (!result) alert(message);

@@ -29,10 +29,10 @@ const round_states = {
 };
 let players = new Map(); // socket : {admin, name, score}
 let spectators = new Map(); // socket : name
-let game_state = {joining: true, ended: false, round: 1, round_state: round_states.PROMPTS, voting: {}};
+let game_state = {joining: true, ended: false, round: 1, round_state: round_states.PROMPTS, voting: {}, results: {}};
 let submitted_prompts = {}; // name : prompt
 let player_prompts = {}; // prompt : [{name, answer, votes}]
-let game_answers = {};
+let passwords = {} // username : password
 
 
 //Handle client interface on /
@@ -57,7 +57,7 @@ function start_server() {
 //Start the game
 function progress_game() {
   if (game_state.ended) {
-    game_state = {joining: true, ended: false, round: 1, round_state: round_states.PROMPTS, voting: {}};
+    game_state = {joining: true, ended: false, round: 1, round_state: round_states.PROMPTS, voting: {}, results: {}};
     submitted_prompts = {};
     player_prompts = {};
   } else if (game_state.joining) {
@@ -125,6 +125,10 @@ function progress_game() {
           })
         });
         game_state.round_state = round_states.ANSWERS;
+        game_state.results = {};
+        for (const [_, player_dict] of players) {
+          game_state.results[player_dict.name] = 0;
+        };
         break;
       
       case round_states.ANSWERS:
@@ -135,22 +139,31 @@ function progress_game() {
         
       case round_states.VOTING:
         game_state.round_state = round_states.RESULTS;
+        let p1res = (game_state.voting.info[0].votes * 100 * game_state.round);
+        let p2res = (game_state.voting.info[1].votes * 100 * game_state.round)
         game_state.voting['scores'] = {
-          '0': (game_state.voting.info[0].votes * 100 * game_state.round),
-          '1': (game_state.voting.info[1].votes * 100 * game_state.round)
+          '0': p1res,
+          '1': p2res
         }
+        game_state.results[game_state.voting.info[0].name] += p1res;
+        game_state.results[game_state.voting.info[1].name] += p2res;
         break;
           
       case round_states.RESULTS:
         if (!set_voting_state()) game_state.round_state = round_states.VOTING;
         else {
           game_state.round_state = round_states.SCORES;
-          //round_number * votes * 100
         }
         break;
 
       case round_states.SCORES:
+        for (const [_, player_dict] of players) {
+          update_player_scores();
+          player_dict.score += game_state.results[player_dict.name];
+        };
+
         if (game_state.round == 3) {
+          update_player_games();
           game_state.ended = true;
         } else {
           game_state.round += 1;
@@ -160,6 +173,35 @@ function progress_game() {
     }
   }
   update_state();
+}
+
+function update_player_scores() {
+  for (let [name, more_score] of Object.entries(game_state.results)) {
+    console.log("adding " + more_score + " score to " + name)
+    let data = {username: name, password: passwords[name], add_to_score: more_score};
+    axios.post('/player/update', data)
+    .then(response => {
+      let {result, msg} = response.data;
+      if (!result) console.log("Something went wrong updating scores: " + msg);
+    })
+    .catch(error => {
+      console.log(error.message);
+    })
+  }
+}
+
+function update_player_games() {
+  for (let [name, more_score] of Object.entries(game_state.results)) {
+    let data = {username: name, password: passwords[name], add_to_games_played: 1};
+    axios.post('/player/update', data)
+    .then(response => {
+      let {result, msg} = response.data;
+      if (!result) console.log("Something went wrong updating scores: " + msg);
+    })
+    .catch(error => {
+      console.log(error.message);
+    })
+  }
 }
 
 //Returns a bool (if true advance to scores)
@@ -216,11 +258,13 @@ function update_state() {
 }
 
 
-function add_player(socket, name) {
+function add_player(socket, name, password) {
   if (!game_state.joining) {
     console.log("spectator")
     spectators.set(socket, name);
+    socket.emit('spectator');
   } else {
+    passwords[name] = password;
     players.set(socket, {
       name: name,
       score: 0,
@@ -289,14 +333,14 @@ io.on('connection', socket => {
   socket.on('register', ({username, password}) => {
     console.log('register: username=' + username + ', password=' + password);
     let data = {username: username, password: password}
-    handle_request(socket, '/player/register', data, 'register', (soc) => add_player(soc, username));
+    handle_request(socket, '/player/register', data, 'register', (soc) => add_player(soc, username, password));
   });
 
   //Handle login
   socket.on('login', ({username, password}) => {
     console.log('login: username=' + username + ', password=' + password);
     let data = {username: username, password: password};
-    handle_request(socket, '/player/login', data, 'login', (soc) => add_player(soc, username));
+    handle_request(socket, '/player/login', data, 'login', (soc) => add_player(soc, username, password));
   });
 
   //Handle submit prompt

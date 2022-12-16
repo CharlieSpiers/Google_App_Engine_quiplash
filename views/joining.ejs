@@ -1,8 +1,8 @@
 <div v-if="player_state.admin">
     <button class="btn btn-primary" @click="next_page()">Start game</button>
 </div>
-<div v-if="player_state.spactator">
-    <p>You are a spectator!</p>
+<div v-if="spectator">
+    <p>You are a spectator! Please reload if you want to play.</p>
 </div>
 <strong>Waiting for the admin to start!</strong>
 <ul id="players">
